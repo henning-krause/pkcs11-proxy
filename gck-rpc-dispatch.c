@@ -2226,7 +2226,7 @@ static int write_all(CallState *cs, void *data, size_t len)
 		if (cs->tls)
 			r = gck_rpc_tls_write_all(cs->tls, (void *) data, len);
 		else
-                        r = send(cs->sock, data, len, MSG_NOSIGNAL);
+            r = send(cs->sock, data, len, MSG_NOSIGNAL);
 
 		if (r == -1) {
 			if (errno == EPIPE) {
@@ -2425,12 +2425,12 @@ int gck_rpc_layer_accept(GckRpcTlsPskState *tls)
                         return 1;
                 }
 
-                ds->cs.sock = new_fd;
-                ds->cs.read = &read_all;
-                ds->cs.write = &write_all;
-                ds->cs.addr = addr;
-                ds->cs.addrlen = addrlen;
-                ds->cs.tls = tls;
+	ds->cs.sock = new_fd;
+        ds->cs.read = (int (*)(void *, unsigned char *, unsigned long))&read_all;
+        ds->cs.write = (int (*)(void *, unsigned char *, unsigned long))&write_all;
+	ds->cs.addr = addr;
+	ds->cs.addrlen = addrlen;
+	ds->cs.tls = tls;
 
                 error = pthread_create(&ds->thread, NULL,
                                 run_dispatch_thread, &(ds->cs));
@@ -2470,8 +2470,8 @@ void gck_rpc_layer_inetd(CK_FUNCTION_LIST_PTR module)
 
    memset(&cs, 0, sizeof(cs));
    cs.sock = STDIN_FILENO;
-   cs.read = &_inetd_read;
-   cs.write = &_inetd_write;
+   cs.read = (int (*)(void *, unsigned char *, unsigned long))&_inetd_read;
+   cs.write = (int (*)(void *, unsigned char *, unsigned long))&_inetd_write;
 
    pkcs11_module = module;
 

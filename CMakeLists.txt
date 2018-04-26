@@ -10,21 +10,22 @@ project (pkcs11 C)
 
 # MAC cross find openssl
 
-if ( CMAKE_HOST_APPLE)
-	set(OPENSSL_USE_STATIC_LIBS TRUE)
-	find_package ( OpenSSL REQUIRED)
-	message(WARNING "OpenSSL_VERSION: ${OPENSSL_VERSION}")
-	message(WARNING "OpenSSL_INCLUDE_DIR: ${OPENSSL_INCLUDE_DIR}")
-	message(WARNING "OpenSSL_LIBRARIES: ${OPENSSL_LIBRARIES}")
-endif ( CMAKE_HOST_APPLE)
+# Search OpenSSL
+if (APPLE)
+    set(ENV{PKG_CONFIG_PATH} "/usr/local/opt/openssl/lib/pkgconfig/:$ENV{PKG_CONFIG_PATH}")
+endif()
 
+find_package(PkgConfig REQUIRED)
+pkg_search_module(OPENSSL REQUIRED openssl)
 
-set ( PKCS11_PROXY_SRCS gck-rpc-module.c gck-rpc-message.c gck-rpc-util.c egg-buffer.c gck-rpc-tls-psk.c )
-if ( NOT WIN32 )
-	set ( PKCS11_DAEMON_SRCS egg-buffer.c gck-rpc-daemon-standalone.c gck-rpc-dispatch.c gck-rpc-message.c gck-rpc-util.c syscall-reporter.c syscall-names.h gck-rpc-tls-psk.c )
-endif ( NOT WIN32)
+if( OPENSSL_FOUND )
 
-#set ( LIBTEST_SRCS libtest.c )
+    include_directories(${OPENSSL_INCLUDE_DIRS})
+    link_directories(${OPENSSL_LIBRARY_DIRS})
+    message(STATUS "Using OpenSSL ${OPENSSL_VERSION}")
+else()
+    # Error; with REQUIRED, pkg_search_module() will throw an error by it's own
+endif()
 
 add_definitions(-Wall)
 add_library(pkcs11-proxy SHARED ${PKCS11_PROXY_SRCS})
@@ -71,15 +72,13 @@ if (WIN32)
 	endif ( CMAKE_HOST_APPLE)
 
 
-else (WIN32)
-	# ELSE other unix
-	target_link_libraries (pkcs11-proxy pthread ssl crypto)
-	#target_link_libraries (pkcs11-proxy  pthread ${OPENSSL_LIBRARIES} )
-	target_link_libraries (pkcs11-daemon dl pthread ssl crypto seccomp)
-	#target_link_libraries (libtest dl  )
-endif (WIN32)
+target_link_libraries (pkcs11-proxy pthread ssl crypto)
 
-
+if (APPLE)
+    target_link_libraries (pkcs11-daemon dl pthread ssl crypto)
+else()
+    target_link_libraries (pkcs11-daemon dl pthread ssl crypto seccomp)
+endif()
 
 install_targets (/lib pkcs11-proxy)
 if ( NOT WIN32 )
